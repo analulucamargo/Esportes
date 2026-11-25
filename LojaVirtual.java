@@ -3,10 +3,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Loja virtual simplificada usada na atividade de auditoria de código.
- * Todas as classes estão neste arquivo para facilitar a leitura.
- */
+//Versão do código alterado.
+
 public class LojaVirtual {
 
     public static void main(String[] args) {
@@ -39,13 +37,18 @@ public class LojaVirtual {
         System.out.printf("Total:    R$ %.2f%n", pedido.calcularTotal());
         System.out.println("Saldo de canetas: " + estoque.getSaldo(caneta));
     }
+    interface Item {
+    double getPreco();
+    double getPeso();
+    String getDescricao();
+    }
 }
 
 /**
  * Produto vendido individualmente.
  * Dois produtos são iguais quando têm o mesmo código.
  */
-class Produto {
+class Produto implements Item {
     private final String codigo;
     private final String descricao;
     private final double preco;
@@ -62,16 +65,16 @@ class Produto {
         return codigo;
     }
 
-    String getDescricao() {
+    public String getDescricao() {
         return descricao;
     }
 
-    double getPreco() {
+    public double getPreco() {
         return preco;
     }
 
     /** Peso em quilogramas. */
-    double getPeso() {
+    public double getPeso() {
         return peso;
     }
 
@@ -108,9 +111,10 @@ class Kit {
     }
 
     /** Soma os preços de todos os produtos do kit e aplica o desconto percentual. */
+    // Método alterado.
     double getPreco() {
         double soma = 0.0;
-        for (int i = 1; i < produtos.size(); i++) {
+        for (int i = 0; i < produtos.size(); i++) {
             soma += produtos.get(i).getPreco();
         }
         return soma * (1 - percentualDesconto / 100);
@@ -214,9 +218,10 @@ class CentralDeCupons {
      * Devolve o cupom com o código informado, ou null se ele não existir.
      * O código costuma vir de um campo digitado pelo cliente.
      */
+    //Método alterado.
     Cupom buscar(String codigo) {
         for (Cupom cupom : cupons) {
-            if (cupom.getCodigo() == codigo) {
+            if (cupom.getCodigo().equals(codigo)) {
                 return cupom;
             }
         }
