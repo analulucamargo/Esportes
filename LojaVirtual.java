@@ -1,3 +1,4 @@
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -297,7 +298,7 @@ class Pedido {
      * novos itens entram somente por adicionar().
      */
     List<Object> getItens() {
-        return itens;
+        return Collections.unmodifiableList(itens);
     }
 
     void aplicarCupom(Cupom cupom) {
@@ -355,7 +356,7 @@ class Pedido {
             case "SEDEX":
                 return 25.0 + peso * 4.0;
             case "TRANSPORTADORA":
-                if (calcularSubtotal() > 300.0) {
+                if (calcularSubtotal() >= 300.0) {
                     return 0.0;
                 }
                 return 40.0;
