@@ -90,6 +90,10 @@ class Produto implements Item {
         Produto outro = (Produto) o;
         return codigo.equals(outro.codigo);
     }
+    @Override
+    public int hashCode(){
+        return codigo.hashCode();
+    }
 }
 
 /**
@@ -257,6 +261,7 @@ class Estoque {
             throw new IllegalStateException("Saldo insuficiente para " + produto.getCodigo());
         }
         saldo -= quantidade;
+        saldos.put(produto, saldo);
     }
 }
 
