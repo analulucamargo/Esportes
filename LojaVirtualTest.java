@@ -3,6 +3,36 @@ import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 
 class LojaVirtualTest {
+    
+    // ---------- D1: Kit.getPreco() deve somar todos os produtos ----------
+
+    @Test
+    void kitDeveSomarTodosOsProdutos() {
+        // preparar
+        Kit kit = new Kit("Teste", 0.0);
+        kit.adicionar(new Produto("P01", "Caderno", 25.0, 0.4));
+        kit.adicionar(new Produto("P02", "Caneta", 5.0, 0.02));
+        // executar
+        double preco = kit.getPreco();
+        // verificar
+        assertEquals(30.0, preco, 0.001,
+                "o preço do kit deve somar todos os produtos, inclusive o primeiro");
+    }
+
+    // ---------- D2: CentralDeCupons.buscar() deve comparar com equals ----------
+
+    @Test
+    void buscarDeveEncontrarCupomPorConteudoDoCodigo() {
+        // preparar
+        CentralDeCupons central = new CentralDeCupons();
+        central.cadastrar(new Cupom("VOLTA10", 10.0));
+        String digitado = new String("VOLTA10");
+        // executar
+        Cupom encontrado = central.buscar(digitado);
+        // verificar
+        assertNotNull(encontrado,
+                "o cupom VOLTA10 deve ser encontrado mesmo com a String vinda de outro objeto");
+    }
 
     // ---------- D3: Estoque.baixar() deve gravar o novo saldo no Map ----------
 
@@ -93,6 +123,74 @@ class LojaVirtualTest {
         assertEquals(40.0, pedido.calcularFrete(), 0.001);
     }
 
+    //----------M1: Pode conter outro kit------------
+    
+    @Test
+    void kitPodeConterOutroKit() {
+    // preparar
+    Kit interno = new Kit("Interno", 0.0);
+    interno.adicionar(new Produto("P01", "Caderno", 25.0, 0.4));
+    Kit externo = new Kit("Externo", 10.0);
+    externo.adicionar(interno);
+    externo.adicionar(new Produto("P02", "Caneta", 5.0, 0.02));
+    // executar
+    double preco = externo.getPreco();
+    // verificar
+    assertEquals(27.0, preco, 0.001,
+        "o kit externo deve somar o kit interno e a caneta, com 10% de desconto");
+}
+
+    // ---------- M2: adicionais com Decorator ----------
+
+    @Test
+    void embalagemAdicionaCincoReais() {
+        Produto produto = new Produto("T01", "Teste", 100.0, 0.5);
+
+        LojaVirtual.Item item = new EmbalagemDecorator(produto);
+
+        assertEquals(105.0, item.getPreco(), 0.001);
+    }
+
+    @Test
+    void garantiaAdicionaDezPorCento() {
+        Produto produto = new Produto("T02", "Teste", 100.0, 0.5);
+
+        LojaVirtual.Item item = new GarantiaDecorator(produto);
+
+        assertEquals(110.0, item.getPreco(), 0.001);
+    }
+
+    @Test
+    void seguroAdicionaOitoReais() {
+        Produto produto = new Produto("T03", "Teste", 100.0, 0.5);
+
+        LojaVirtual.Item item = new SeguroDecorator(produto);
+
+        assertEquals(108.0, item.getPreco(), 0.001);
+    }
+    
+    @Test
+    void pedidoAceitaKitProdutoEDecorators() {
+        Produto caderno = new Produto("P01", "Caderno", 25.0, 0.4);
+        Produto caneta = new Produto("P02", "Caneta", 5.0, 0.02);
+        Produto mochila = new Produto("P03", "Mochila", 120.0, 0.9);
+
+        Kit kit = new Kit("Escolar", 10.0);
+        kit.adicionar(caderno);
+        kit.adicionar(caneta);
+
+        LojaVirtual.Item mochilaPresente = new GarantiaDecorator(new EmbalagemDecorator(mochila));
+
+        Pedido pedido = new Pedido("SEDEX");
+        pedido.adicionar(kit);
+        pedido.adicionar(mochilaPresente);
+        pedido.adicionar(caneta);
+
+        assertEquals(169.50, pedido.calcularSubtotal(), 0.001);
+        assertEquals(1.34, pedido.calcularPesoTotal(), 0.001);
+    }
+
+
     // ---------- M3: testes de caracterização do frete (escritos antes do Strategy) ----------
 
     @Test
@@ -162,87 +260,5 @@ class LojaVirtualTest {
         assertEquals(33.0, new FreteSedex().calcular(2.0, 0.0), 0.001);
         assertEquals(0.0, new FreteTransportadora().calcular(2.0, 300.0), 0.001);
         assertEquals(40.0, new FreteTransportadora().calcular(2.0, 299.99), 0.001);
-    }
-
-    // ---------- D1: Kit.getPreco() deve somar todos os produtos ----------
-
-    @Test
-    void kitDeveSomarTodosOsProdutos() {
-        // preparar
-        Kit kit = new Kit("Teste", 0.0);
-        kit.adicionar(new Produto("P01", "Caderno", 25.0, 0.4));
-        kit.adicionar(new Produto("P02", "Caneta", 5.0, 0.02));
-        // executar
-        double preco = kit.getPreco();
-        // verificar
-        assertEquals(30.0, preco, 0.001,
-                "o preço do kit deve somar todos os produtos, inclusive o primeiro");
-    }
-
-    // ---------- D2: CentralDeCupons.buscar() deve comparar com equals ----------
-
-    @Test
-    void buscarDeveEncontrarCupomPorConteudoDoCodigo() {
-        // preparar
-        CentralDeCupons central = new CentralDeCupons();
-        central.cadastrar(new Cupom("VOLTA10", 10.0));
-        String digitado = new String("VOLTA10");
-        // executar
-        Cupom encontrado = central.buscar(digitado);
-        // verificar
-        assertNotNull(encontrado,
-                "o cupom VOLTA10 deve ser encontrado mesmo com a String vinda de outro objeto");
-    }
-
-    // ---------- M2: adicionais com Decorator ----------
-
-    @Test
-    void embalagemAdicionaCincoReais() {
-        Produto produto = new Produto("T01", "Teste", 100.0, 0.5);
-
-        LojaVirtual.Item item = new EmbalagemDecorator(produto);
-
-        assertEquals(105.0, item.getPreco(), 0.001);
-    }
-
-    @Test
-    void garantiaAdicionaDezPorCento() {
-        Produto produto = new Produto("T02", "Teste", 100.0, 0.5);
-
-        LojaVirtual.Item item = new GarantiaDecorator(produto);
-
-        assertEquals(110.0, item.getPreco(), 0.001);
-    }
-
-    @Test
-    void seguroAdicionaOitoReais() {
-        Produto produto = new Produto("T03", "Teste", 100.0, 0.5);
-
-        LojaVirtual.Item item = new SeguroDecorator(produto);
-
-        assertEquals(108.0, item.getPreco(), 0.001);
-    }
-
-    // ---------- M1: Pedido aceita qualquer Item (Produto, Kit, Decorator) ----------
-
-    @Test
-    void pedidoAceitaKitProdutoEDecorators() {
-        Produto caderno = new Produto("P01", "Caderno", 25.0, 0.4);
-        Produto caneta = new Produto("P02", "Caneta", 5.0, 0.02);
-        Produto mochila = new Produto("P03", "Mochila", 120.0, 0.9);
-
-        Kit kit = new Kit("Escolar", 10.0);
-        kit.adicionar(caderno);
-        kit.adicionar(caneta);
-
-        LojaVirtual.Item mochilaPresente = new GarantiaDecorator(new EmbalagemDecorator(mochila));
-
-        Pedido pedido = new Pedido("SEDEX");
-        pedido.adicionar(kit);
-        pedido.adicionar(mochilaPresente);
-        pedido.adicionar(caneta);
-
-        assertEquals(169.50, pedido.calcularSubtotal(), 0.001);
-        assertEquals(1.34, pedido.calcularPesoTotal(), 0.001);
-    }
+    }    
 }
