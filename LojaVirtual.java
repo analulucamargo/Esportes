@@ -17,7 +17,7 @@ public class LojaVirtual {
         kitEscolar.adicionar(caderno);
         kitEscolar.adicionar(caneta);
 
-        ItemComAdicionais mochilaPresente = new ItemComAdicionais(mochila, true, true, false);
+        LojaVirtual.Item mochilaPresente = new GarantiaDecorator(new EmbalagemDecorator(mochila));
 
         Pedido pedido = new Pedido("SEDEX");
         pedido.adicionar(kitEscolar);
@@ -49,7 +49,7 @@ public class LojaVirtual {
  * Produto vendido individualmente.
  * Dois produtos são iguais quando têm o mesmo código.
  */
-class Produto implements Item {
+class Produto implements LojaVirtual.Item {
     private final String codigo;
     private final String descricao;
     private final double preco;
@@ -101,40 +101,39 @@ class Produto implements Item {
  * A equipe de vendas pediu kits que contenham outros kits
  * e itens com adicionais, o que esta classe ainda não aceita.
  */
-class Kit {
+class Kit implements LojaVirtual.Item {
     private final String nome;
     private final double percentualDesconto;
-    private final List<Produto> produtos = new ArrayList<>();
+    private final List<LojaVirtual.Item> itens = new ArrayList<>();
 
     Kit(String nome, double percentualDesconto) {
         this.nome = nome;
         this.percentualDesconto = percentualDesconto;
     }
 
-    void adicionar(Produto produto) {
-        produtos.add(produto);
+    void adicionar(LojaVirtual.Item item) {
+        itens.add(item);
     }
 
-    /** Soma os preços de todos os produtos do kit e aplica o desconto percentual. */
-    // Método alterado.
-    double getPreco() {
+    /** Soma os preços de todos os itens do kit e aplica o desconto percentual. */
+    public double getPreco() {
         double soma = 0.0;
-        for (int i = 0; i < produtos.size(); i++) {
-            soma += produtos.get(i).getPreco();
+        for (LojaVirtual.Item item : itens) {
+            soma += item.getPreco();
         }
         return soma * (1 - percentualDesconto / 100);
     }
 
-    /** Soma os pesos de todos os produtos do kit, em quilogramas. */
-    double getPeso() {
+    /** Soma os pesos de todos os itens do kit, em quilogramas. */
+    public double getPeso() {
         double soma = 0.0;
-        for (Produto produto : produtos) {
-            soma += produto.getPeso();
+        for (LojaVirtual.Item item : itens) {
+            soma += item.getPeso();
         }
         return soma;
     }
 
-    String getDescricao() {
+    public String getDescricao() {
         return "Kit " + nome;
     }
 }
@@ -146,49 +145,69 @@ class Kit {
  * e seguro contra roubo (R$ 8,00).
  * O marketing planeja novos adicionais, como cartão de presente.
  */
-class ItemComAdicionais {
-    private final Produto produto;
-    private final boolean embalagem;
-    private final boolean garantia;
-    private final boolean seguro;
 
-    ItemComAdicionais(Produto produto, boolean embalagem, boolean garantia, boolean seguro) {
-        this.produto = produto;
-        this.embalagem = embalagem;
-        this.garantia = garantia;
-        this.seguro = seguro;
+abstract class AdicionalDecorator implements LojaVirtual.Item {
+
+    protected final LojaVirtual.Item item;
+
+    AdicionalDecorator(LojaVirtual.Item item) {
+        this.item = item;
     }
 
-    double getPreco() {
-        double preco = produto.getPreco();
-        if (embalagem) {
-            preco += 5.0;
-        }
-        if (garantia) {
-            preco += preco * 0.10;
-        }
-        if (seguro) {
-            preco += 8.0;
-        }
-        return preco;
+    @Override
+    public double getPeso() {
+        return item.getPeso();
+    }
+}
+
+class EmbalagemDecorator extends AdicionalDecorator {
+
+    EmbalagemDecorator(LojaVirtual.Item item) {
+        super(item);
     }
 
-    double getPeso() {
-        return produto.getPeso();
+    @Override
+    public double getPreco() {
+        return item.getPreco() + 5.0;
     }
 
-    String getDescricao() {
-        String descricao = produto.getDescricao();
-        if (embalagem) {
-            descricao += " + embalagem";
-        }
-        if (garantia) {
-            descricao += " + garantia";
-        }
-        if (seguro) {
-            descricao += " + seguro";
-        }
-        return descricao;
+    @Override
+    public String getDescricao() {
+        return item.getDescricao() + " + embalagem";
+    }
+}
+
+class GarantiaDecorator extends AdicionalDecorator {
+
+    GarantiaDecorator(LojaVirtual.Item item) {
+        super(item);
+    }
+
+    @Override
+    public double getPreco() {
+        return item.getPreco() * 1.10;
+    }
+
+    @Override
+    public String getDescricao() {
+        return item.getDescricao() + " + garantia";
+    }
+}
+
+class SeguroDecorator extends AdicionalDecorator {
+
+    SeguroDecorator(LojaVirtual.Item item) {
+        super(item);
+    }
+
+    @Override
+    public double getPreco() {
+        return item.getPreco() + 8.0;
+    }
+
+    @Override
+    public String getDescricao() {
+        return item.getDescricao() + " + seguro";
     }
 }
 
@@ -267,27 +286,22 @@ class Estoque {
 
 /** Pedido de compra. Aceita produtos, kits e itens com adicionais. */
 class Pedido {
-    private final String tipoFrete;
-    private final List<Object> itens = new ArrayList<>();
+    private final Frete frete;
+    private final List<LojaVirtual.Item> itens = new ArrayList<>();
     private Cupom cupom;
     private boolean finalizado;
 
     /** @param tipoFrete PAC, SEDEX ou TRANSPORTADORA */
     Pedido(String tipoFrete) {
-        this.tipoFrete = tipoFrete;
+        this(Frete.porTipo(tipoFrete));
     }
 
-    void adicionar(Produto produto) {
-        verificarAberto();
-        itens.add(produto);
+    /** Permite informar qualquer estratégia de frete, inclusive novas formas de entrega. */
+    Pedido(Frete frete) {
+        this.frete = frete;
     }
 
-    void adicionar(Kit kit) {
-        verificarAberto();
-        itens.add(kit);
-    }
-
-    void adicionar(ItemComAdicionais item) {
+    void adicionar(LojaVirtual.Item item) {
         verificarAberto();
         itens.add(item);
     }
@@ -302,7 +316,7 @@ class Pedido {
      * Devolve os itens do pedido. A lista devolvida não aceita alterações:
      * novos itens entram somente por adicionar().
      */
-    List<Object> getItens() {
+    List<LojaVirtual.Item> getItens() {
         return Collections.unmodifiableList(itens);
     }
 
@@ -320,29 +334,21 @@ class Pedido {
 
     double calcularSubtotal() {
         double subtotal = 0.0;
-        for (Object item : itens) {
-            if (item instanceof Produto) {
-                subtotal += ((Produto) item).getPreco();
-            } else if (item instanceof Kit) {
-                subtotal += ((Kit) item).getPreco();
-            } else if (item instanceof ItemComAdicionais) {
-                subtotal += ((ItemComAdicionais) item).getPreco();
-            }
+
+        for (LojaVirtual.Item item : itens) {
+            subtotal += item.getPreco();
         }
+
         return subtotal;
     }
 
     double calcularPesoTotal() {
         double peso = 0.0;
-        for (Object item : itens) {
-            if (item instanceof Produto) {
-                peso += ((Produto) item).getPeso();
-            } else if (item instanceof Kit) {
-                peso += ((Kit) item).getPeso();
-            } else if (item instanceof ItemComAdicionais) {
-                peso += ((ItemComAdicionais) item).getPeso();
-            }
+
+        for (LojaVirtual.Item item : itens) {
+            peso += item.getPeso();
         }
+
         return peso;
     }
 
@@ -354,20 +360,7 @@ class Pedido {
      * A loja negocia novas formas de entrega com frequência.
      */
     double calcularFrete() {
-        double peso = calcularPesoTotal();
-        switch (tipoFrete) {
-            case "PAC":
-                return 15.0 + peso * 2.0;
-            case "SEDEX":
-                return 25.0 + peso * 4.0;
-            case "TRANSPORTADORA":
-                if (calcularSubtotal() >= 300.0) {
-                    return 0.0;
-                }
-                return 40.0;
-            default:
-                throw new IllegalArgumentException("Tipo de frete inválido: " + tipoFrete);
-        }
+        return frete.calcular(calcularPesoTotal(), calcularSubtotal());
     }
 
     /** Subtotal com o desconto do cupom, quando houver, mais o frete. */
@@ -377,5 +370,66 @@ class Pedido {
             subtotal -= subtotal * cupom.getPercentual() / 100;
         }
         return subtotal + calcularFrete();
+    }
+}
+
+/**
+ * Estratégia de cálculo de frete (padrão Strategy).
+ * Uma nova forma de entrega é uma nova implementação desta interface,
+ * sem alterar a classe Pedido.
+ */
+interface Frete {
+
+    /**
+     * @param peso     peso total do pedido, em quilogramas
+     * @param subtotal subtotal do pedido, antes do cupom
+     */
+    double calcular(double peso, double subtotal);
+
+    /**
+     * Escolhe a estratégia pelo nome: PAC, SEDEX ou TRANSPORTADORA.
+     * Para nome desconhecido, a estratégia devolvida lança IllegalArgumentException
+     * ao calcular, mantendo o comportamento original do Pedido.
+     */
+    static Frete porTipo(String tipo) {
+        if ("PAC".equals(tipo)) {
+            return new FretePac();
+        }
+        if ("SEDEX".equals(tipo)) {
+            return new FreteSedex();
+        }
+        if ("TRANSPORTADORA".equals(tipo)) {
+            return new FreteTransportadora();
+        }
+        return (peso, subtotal) -> {
+            throw new IllegalArgumentException("Tipo de frete inválido: " + tipo);
+        };
+    }
+}
+
+/** PAC: R$ 15,00 mais R$ 2,00 por kg. */
+class FretePac implements Frete {
+    @Override
+    public double calcular(double peso, double subtotal) {
+        return 15.0 + peso * 2.0;
+    }
+}
+
+/** SEDEX: R$ 25,00 mais R$ 4,00 por kg. */
+class FreteSedex implements Frete {
+    @Override
+    public double calcular(double peso, double subtotal) {
+        return 25.0 + peso * 4.0;
+    }
+}
+
+/** TRANSPORTADORA: grátis para subtotal a partir de R$ 300,00; R$ 40,00 abaixo disso. */
+class FreteTransportadora implements Frete {
+    @Override
+    public double calcular(double peso, double subtotal) {
+        if (subtotal >= 300.0) {
+            return 0.0;
+        }
+        return 40.0;
     }
 }
